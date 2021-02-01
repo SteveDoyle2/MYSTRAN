@@ -28,12 +28,12 @@
 
    INTERFACE
 
-      SUBROUTINE CLOSE_OUTFILES ( BUG_CLOSE_STAT, ERR_CLOSE_STAT, F04_CLOSE_STAT, PCH_CLOSE_STAT ) 
+      SUBROUTINE CLOSE_OUTFILES ( BUG_CLOSE_STAT, ERR_CLOSE_STAT, F04_CLOSE_STAT, PCH_CLOSE_STAT, OP2_CLOSE_STAT ) 
 
  
       USE PENTIUM_II_KIND, ONLY       :  BYTE
-      USE IOUNT1, ONLY                :  BUG   , ERR   , F04   , F06   , PCH    ,SC1, WRT_LOG,                                     &
-                                         BUGFIL, ERRFIL, F04FIL, F06FIL, PCHFIL
+      USE IOUNT1, ONLY                :  BUG   , ERR   , F04   , F06   , PCH    ,SC1, OP2, WRT_LOG,                                &
+                                         BUGFIL, ERRFIL, F04FIL, F06FIL, PCHFIL, OP2FIL
 
       IMPLICIT NONE
 
@@ -41,6 +41,7 @@
       CHARACTER(LEN=*), INTENT(IN)    :: ERR_CLOSE_STAT    ! Input value for close status for ERR
       CHARACTER(LEN=*), INTENT(IN)    :: F04_CLOSE_STAT    ! Input value for close status for F04
       CHARACTER(LEN=*), INTENT(IN)    :: PCH_CLOSE_STAT    ! Input value for close status for PCH
+      CHARACTER(LEN=*), INTENT(IN)    :: OP2_CLOSE_STAT    ! Input value for close status for OP2
 
       END SUBROUTINE CLOSE_OUTFILES
 

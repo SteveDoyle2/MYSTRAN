@@ -73,6 +73,7 @@
       CHARACTER(FILE_NAM_MAXLEN*BYTE) :: SEQFIL                ! (filename.SEQ) Unformatted file , see descr. below
       CHARACTER(FILE_NAM_MAXLEN*BYTE) :: SPCFIL                ! (filename.SPC) Formatted file , see descr. below
 
+      CHARACTER(FILE_NAM_MAXLEN*BYTE) :: OP2FIL                ! (filename.OP2) Unformatted file , see descr. below
       CHARACTER(FILE_NAM_MAXLEN*BYTE) :: F21FIL                ! (filename.F21) Unformatted file , see descr. below
       CHARACTER(FILE_NAM_MAXLEN*BYTE) :: F22FIL                ! (filename.F22) Unformatted file , see descr. below
       CHARACTER(FILE_NAM_MAXLEN*BYTE) :: F23FIL                ! (filename.F23) Unformatted file , see descr. below
@@ -159,6 +160,7 @@
       CHARACTER(  8*BYTE)             :: SEQSTAT       = 'DELETE  '  ! close status for file SEQFIL 
       CHARACTER(  8*BYTE)             :: SPCSTAT       = 'DELETE  '  ! close status for file SPCFIL 
 
+      CHARACTER(  8*BYTE)             :: OP2STAT       = 'DELETE  '  ! close status for file OP2FIL 
       CHARACTER(  8*BYTE)             :: F21STAT       = 'DELETE  '  ! close status for file F21FIL 
       CHARACTER(  8*BYTE)             :: F22STAT       = 'DELETE  '  ! close status for file F22FIL 
       CHARACTER(  8*BYTE)             :: F23STAT       = 'DELETE  '  ! close status for file F23FIL 
@@ -245,6 +247,7 @@
       CHARACTER( 64*BYTE)             :: SEQ_MSG       = 'BANDIT SEQGP CARD IMAGES'
       CHARACTER( 64*BYTE)             :: SPC_MSG       = 'SPC1 TEXT FILE'
 
+      CHARACTER( 64*BYTE)             :: OP2_MSG       = 'OP2 PROGRAM OUTPUT FILE'
       CHARACTER( 64*BYTE)             :: F21_MSG       = 'ELEM MASS DISK FILE'
       CHARACTER( 64*BYTE)             :: F22_MSG       = 'ELEM THERM & PRESS LOADS DISK FILE'
       CHARACTER( 64*BYTE)             :: F23_MSG       = 'ELEM STIFF MATRIX DISK FILE'
@@ -344,6 +347,7 @@
       INTEGER(LONG)                   :: SEQ           =   12 ! Unit no. for SEQGP card images from BANDIT
       INTEGER(LONG)                   :: SPC           =   13 ! Unit no. for SPC1 text file
 
+      INTEGER(LONG)                   :: OP2           =   14 ! Unit no. for file OP2FIL; we use 14 to be consisent with Nastran
       INTEGER(LONG)                   :: F21           =   91 ! Unit no. for file F21FIL
       INTEGER(LONG)                   :: F22           =   92 ! Unit no. for file F22FIL
       INTEGER(LONG)                   :: F23           =   93 ! Unit no. for file F23FIL
@@ -443,6 +447,9 @@
 ! F04FIL is a formatted file containing subr begin/end times (log file)
 
 ! F06FIL is a formatted file containing the normal output from MYSTRAN
+
+! OP2FIL is an unformatted file containing:
+!      the MSC Nastran formatted OP2 (basically the binary version of the F06)
 
 ! F21FIL is an unformatted file containing:
 !      Array ME (element mass) for elements requested in ELDATA Case Control command 

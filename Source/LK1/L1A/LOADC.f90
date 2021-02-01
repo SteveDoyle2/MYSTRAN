@@ -29,7 +29,7 @@
 ! LOADC reads in the CASE CONTROL DECK
  
       USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
-      USE IOUNT1, ONLY                :  BUGOUT, ERR, F04, F06, IN1, PCHSTAT, WRT_ERR, WRT_LOG
+      USE IOUNT1, ONLY                :  BUGOUT, ERR, F04, F06, IN1, PCHSTAT, OP2STAT, WRT_ERR, WRT_LOG
       USE SCONTR, ONLY                :  BLNK_SUB_NAM, CC_ENTRY_LEN, ENFORCED, FATAL_ERR, WARN_ERR, NSUB, NTSUB, PROG_NAME,        &
                                          RESTART, SOL_NAME
       USE TIMDAT, ONLY                :  TSEC
@@ -114,6 +114,9 @@ outer:DO
             CALL CC_DISP   ( CARD1 )
             IF ((DISP_OUT(1:5) == 'PUNCH') .OR. (DISP_OUT(1:4) == 'BOTH')) THEN
                PCHSTAT = 'KEEP    '
+            ENDIF
+            IF ((DISP_OUT(1:4) == 'PLOT') .OR. (DISP_OUT(1:4) == 'BOTH')) THEN
+               OP2STAT = 'KEEP    '
             ENDIF
  
          ELSE IF (CARD1(1:4) == 'ECHO'    ) THEN
