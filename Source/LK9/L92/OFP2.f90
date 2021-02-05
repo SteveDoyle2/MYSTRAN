@@ -277,6 +277,10 @@
 
                IF ((NUM == NREQ) .AND. (SC_OUT_REQ > 0)) THEN
 
+                  IF ((SPCF_OUT(1:4) == 'PLOT') .OR. (SPCF_OUT(1:4) == 'BOTH')) THEN
+                     CALL WRITE_GRD_OP2_OUTPUTS ( JVEC, NUM, WHAT )
+                  ENDIF
+
                   IF ((SPCF_OUT(1:5) == 'PUNCH') .OR. (SPCF_OUT(1:4) == 'BOTH')) THEN
                      CALL WRITE_GRD_PCH_OUTPUTS ( JVEC, NUM, WHAT )
                   ENDIF
@@ -537,6 +541,10 @@
                ENDDO
 
                IF ((NUM == NREQ) .AND. (SC_OUT_REQ > 0)) THEN
+
+                  IF ((MPCF_OUT(1:4) == 'PLOT') .OR. (MPCF_OUT(1:4) == 'BOTH')) THEN
+                     CALL WRITE_GRD_OP2_OUTPUTS ( JVEC, NUM, WHAT )
+                  ENDIF
 
                   IF ((MPCF_OUT(1:5) == 'PUNCH') .OR. (MPCF_OUT(1:4) == 'BOTH')) THEN
                      CALL WRITE_GRD_PCH_OUTPUTS ( JVEC, NUM, WHAT )

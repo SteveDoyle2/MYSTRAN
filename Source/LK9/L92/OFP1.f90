@@ -104,6 +104,7 @@
 ! ---------------------------------------------------------------------------------------------------------------------------------
 ! Process acceleration output requests for CB sol. 
 
+!      TODO: where is the velocity output?
       IF (WHAT == 'ACCE') THEN
 
          IROW_FILE = 0
@@ -153,6 +154,10 @@
                   ENDIF
                ENDDO
                IF ((NUM == NREQ) .AND. (SC_OUT_REQ > 0)) THEN
+
+                  IF ((ACCE_OUT(1:4) == 'PLOT') .OR. (ACCE_OUT(1:4) == 'BOTH')) THEN
+                     CALL WRITE_GRD_OP2_OUTPUTS ( JVEC, NUM, WHAT )
+                  ENDIF
 
                   IF ((ACCE_OUT(1:5) == 'PUNCH') .OR. (ACCE_OUT(1:4) == 'BOTH')) THEN
                      CALL WRITE_GRD_PCH_OUTPUTS ( JVEC, NUM, WHAT )
@@ -229,6 +234,10 @@
                ENDDO
                IF ((NUM == NREQ) .AND. (SC_OUT_REQ > 0)) THEN
 
+                  IF ((DISP_OUT(1:4) == 'PLOT') .OR. (DISP_OUT(1:4) == 'BOTH')) THEN
+                     CALL WRITE_GRD_OP2_OUTPUTS ( JVEC, NUM, WHAT )
+                  ENDIF
+
                   IF ((DISP_OUT(1:5) == 'PUNCH') .OR. (DISP_OUT(1:4) == 'BOTH')) THEN
                      CALL WRITE_GRD_PCH_OUTPUTS ( JVEC, NUM, WHAT )
                   ENDIF
@@ -301,6 +310,10 @@
                ENDDO
 
                IF (NUM == NREQ) THEN
+
+                  IF ((OLOA_OUT(1:4) == 'PLOT') .OR. (OLOA_OUT(1:4) == 'BOTH')) THEN
+                     CALL WRITE_GRD_OP2_OUTPUTS ( JVEC, NUM, WHAT )
+                  ENDIF
 
                   IF ((OLOA_OUT(1:5) == 'PUNCH') .OR. (OLOA_OUT(1:4) == 'BOTH')) THEN
                      CALL WRITE_GRD_PCH_OUTPUTS ( JVEC, NUM, WHAT )
