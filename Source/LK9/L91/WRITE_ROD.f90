@@ -81,11 +81,14 @@
       REAL(DOUBLE)                    :: MIN_ANS(4)        ! Min for all grids output for each of the 6 disp components
 
       INTEGER(LONG) :: ANALYSIS_CODE
-      INTEGER(LONG) :: ITABLE
+      INTEGER(LONG) :: ISUBCASE, ITABLE
       INTEGER(LONG) :: ELEM_TYPE
       INTEGER(LONG) :: NUM_WIDE
       INTEGER(LONG) :: DEVICE_CODE
       INTEGER(LONG) :: STRESS_CODE
+      INTEGER(LONG) :: NBYTES_PER_WORD, NWORDS, NTOTAL
+      LOGICAL IS_PRINT, IS_PLOT
+      NBYTES_PER_WORD = 4
 
 ! **********************************************************************************************************************************
       IF (WRT_LOG >= SUBR_BEGEND) THEN
@@ -95,32 +98,59 @@
       ENDIF
 
 ! **********************************************************************************************************************************
-!******OP2
+      ! the subcase id
+      ISUBCASE = 1
+
+      ! TODO: assuming PLOT
+      DEVICE_CODE = 1
+
 !      ELEM_TYPE is the flag for the element
 !       - 1 : CROD
 !       - 3 : CTUBE
 !       - 10 : CONROD
-      ! TODO: we still need to write the OES header
-      ITABLE = -3
       ! TODO: assuming CROD
       ELEM_TYPE = 1
-      ! TODO: assuming PLOT
-      DEVICE_CODE = 1
+
+! **********************************************************************************************************************************
+!******OP2
+!     this should encompass all the element types, so should be defined at a higher level
+      ITABLE = -1
+      IF(ITABLE .EQ. -1) THEN
+        CALL WRITE_STRESS_TABLE_HEADER()
+!         CALL WRITE_STRAIN_TABLE_HEADER()
+      ENDIF
+
+!==================================================================================================
+      ITABLE = -3
       
       ! eid, axisl_stress, axial_margin, torsional stress, torsional_margin
       NUM_WIDE = 5
       
       ! dunno???
       STRESS_CODE = 1
-      CALL WRITE_OES3_STATIC(ITABLE, DEVICE_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
-      DO I=1,NUM
-!        TODO: replace with WRITE(OP2)      
-         WRITE(2) EID_OUT_ARRAY(I,1), OGEL(I,1), OGEL(I,2), OGEL(I,3), OGEL(I,4)
-      ENDDO
+      CALL WRITE_OES3_STATIC(ITABLE, ISUBCASE, DEVICE_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
+      NWORDS = NUM * NUM_WIDE
+      NTOTAL = NBYTES_PER_WORD * NWORDS
+      CALL WRITE_NEW_TABLE(ITABLE, NTOTAL)
 
-!******F06
+!      TODO: This needs to be written in one go....some fancy loop goes here
+!      TODO: replace with WRITE(OP2)
+      IS_PRINT = .TRUE.
+      IS_PLOT = .TRUE.
+      IF (IS_PLOT) THEN
+!        WRITE(14) (EID_OUT_ARRAY(I,1)*10+DEVICE_CODE, &
+!                   OGEL(I,1), OGEL(I,2), OGEL(I,3), OGEL(I,4), 
+!                   I=1,NUM)
+        DO I=1,NUM
+!           TODO: replace with WRITE(OP2)
+          WRITE(14) EID_OUT_ARRAY(I,1)*10+DEVICE_CODE, OGEL(I,1), OGEL(I,2), OGEL(I,3), OGEL(I,4)
+        ENDDO
+      ENDIF
+
+!      IF (IS_PRINT) THEN
+!        F06
+!      ENDIF
       DO I=1,NUM,2
- 
          RLINE_F06(1:)  = ' '
          RLINE_ANS(1:)  = ' '
 
@@ -159,7 +189,7 @@
             WRITE(RMSF11,2204) MSFLAG
          ENDIF
 
-! Write torsional stress output to a temporary internal file for one element
+!        Write torsional stress output to a temporary internal file for one element
          WRITE(RSTR12,2202) OGEL(I,3)
          MSFLAG = ' '
          IF (MSPRNT(I,2) /= '0') THEN
@@ -171,8 +201,7 @@
             WRITE(RMSF12,2204) MSFLAG
          ENDIF
  
-! Write axial stress output to a temporary internal file for another element
- 
+!        Write axial stress output to a temporary internal file for another element
          IF ((I+1) <= NUM) THEN
  
             WRITE(REID2,2201) EID_OUT_ARRAY(I+1,1)
@@ -319,36 +348,115 @@
 
       END SUBROUTINE WRITE_ROD
 
+
+!==================================================================================================
+      SUBROUTINE WRITE_STRESS_TABLE_HEADER()
+      USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
+      CHARACTER(8*BYTE) :: TABLE_NAME
+      TABLE_NAME = 'OES1    '
+      CALL WRITE_TABLE_HEADER(TABLE_NAME)
+      END SUBROUTINE WRITE_STRESS_TABLE_HEADER
+
+!==================================================================================================
+      SUBROUTINE WRITE_STRAIN_TABLE_HEADER()
+      USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
+      CHARACTER(8*BYTE) :: TABLE_NAME
+      TABLE_NAME = 'OSTR1   '
+      CALL WRITE_TABLE_HEADER(TABLE_NAME)
+      END SUBROUTINE WRITE_STRAIN_TABLE_HEADER
+
+!==================================================================================================
+      SUBROUTINE WRITE_TABLE_HEADER(TABLE_NAME)
+      USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
+      CHARACTER(LEN=8*BYTE), INTENT(IN) :: TABLE_NAME ! The table name
+      INTEGER(LONG), DIMENSION(3) :: DATE_
+      DATE_ = (/ 2, 4, 2021 /)
+
+!      table0 = [
+!        4, 2, 4,
+!        8, table_name.encode('ascii'), 8,
+!        #4, 0, 4,
+!      ]
+      WRITE(14) 2
+      WRITE(14) TABLE_NAME
+      WRITE(14) 0
+      
+      !data_a = [4, -1, 4,]
+      !data_c = [4, 7, 4,]
+      WRITE(14) -1
+      WRITE(14) 7
+!      table1 = [
+!        28,
+!        102, 0, 0, 0, 512, 0, 0,
+!        28,
+!      ]
+      WRITE(14) 102, 0, 0, 0, 512, 0, 0
+!      data = [
+!        4, -2, 4,
+!        4, 1, 4,
+!        4, 0, 4,
+!      ]
+      WRITE(14) -2
+      WRITE(14) 1
+      WRITE(14) 0
+!      DYEAR = DATE_(3) - 2000
+
+!      table2 = [
+!        4, 7, 4,
+!        28,  # 4i -> 13i
+!        # todays date 3/6/2014, 0, 1  ( year=year-2000)
+!        month, day, dyear, 0, 1,
+!        28,
+!      ]
+      WRITE(14) 7
+      WRITE(14) 0, 1, DATE_(1), DATE_(2), DATE_(3) - 2000, 0, 1
+      END SUBROUTINE WRITE_TABLE_HEADER
+
+! ##################################################################################################################################
+      SUBROUTINE WRITE_NEW_TABLE(ITABLE, NTOTAL)
+      USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
+      INTEGER(LONG), INTENT(IN) :: ITABLE   ! The subtable id
+      INTEGER(LONG), INTENT(IN) :: NTOTAL   ! the width of the block
+
+      WRITE(14) ITABLE
+      WRITE(14) 1
+      WRITE(14) 0
+      WRITE(14) NTOTAL
+
+      END SUBROUTINE WRITE_NEW_TABLE
+
 ! ##################################################################################################################################
       SUBROUTINE WRITE_OUG3(ITABLE, ISUBCASE)
-      USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
-      integer, intent(in) :: ITABLE, ISUBCASE
-! inputs
-!isubcase = 1
+      USE PENTIUM_II_KIND, ONLY  :  BYTE, LONG, DOUBLE
+      INTEGER, INTENT(IN) :: ITABLE, ISUBCASE
+!      Parameters
+!      ==========
+!      isubcase : int
+!         the subcase id
 
-      character(len=128) :: TITLE, LABEL, SUBTITLE
-      integer :: TABLE_CODE, THERMAL, FORMAT_CODE, NUM_WIDE, SORT_CODE, &
+      CHARACTER(LEN=128) :: TITLE, LABEL, SUBTITLE
+      INTEGER :: TABLE_CODE, THERMAL, FORMAT_CODE, NUM_WIDE, SORT_CODE, &
         DEVICE_CODE, RANDOM_CODE, ACOUSTIC_FLAG, OCODE, &
         APPROACH_CODE, TCODE, ANALYSIS_CODE
-      integer :: FIELD5, FIELD6, FIELD7
-      logical :: new_result
+      INTEGER :: FIELD5, FIELD6, FIELD7
+      LOGICAL :: NEW_RESULT
 
       TITLE = "Title"
       LABEL = "Label"
       SUBTITLE = "Subtitle"
 
-      new_result = .TRUE.
-      IF((new_result) .AND. (ITABLE .NE. -3)) THEN
+      NEW_RESULT = .TRUE.
+      IF(NEW_RESULT .AND. (ITABLE .NE. -3)) THEN
 !        header = [
-!            4, 146, 4,
+!          4, 146, 4,
 !        ]
         WRITE(2) 146
       ELSE
 !        header = [
-!            4, itable, 4,
-!            4, 1, 4,
-!            4, 0, 4,
-!            4, 146, 4,
+!          4, itable, 4,
+!          4, 1, 4,
+!          4, 0, 4,
+!          4, 146, 4,
 !        ]
         WRITE(2) ITABLE
         WRITE(2) 1
@@ -378,13 +486,6 @@
       ACOUSTIC_FLAG = 0
       OCODE = 0
 
-!      calculate approach code and tcode
-!      analysis_code = (approach_code - device_code) // 10
-!      device_code = approach_code % 10
-
-!      is this right?
-      APPROACH_CODE = ANALYSIS_CODE*10 + DEVICE_CODE
-
 
 !      table_code = tCode % 1000
 !      sort_code = tCode // 1000
@@ -408,6 +509,7 @@
 !        raise NotImplementedError(self.analysis_code)
       ENDIF
 
+      APPROACH_CODE = ANALYSIS_CODE*10 + DEVICE_CODE
 !      table3 = [
 !          approach_code, table_code, 0, isubcase, field5,
 !          field6, field7, random_code, format_code, num_wide,
@@ -432,59 +534,107 @@
       END SUBROUTINE WRITE_OUG3
 
 ! ##################################################################################################################################
-      SUBROUTINE WRITE_OES3_STATIC(ITABLE, DEVICE_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
-!    Parameters
-!    ==========
-!    op2 : file int
-!       the file pointer
-!    itable : int
-!       the subtable number
-!    etype : int
-!       element type
-!    num_wide : int
-!       the number of fields in each element
-!    stress_code : int
-!       0 : stress???
-!       1 : strain???
+      SUBROUTINE WRITE_OES3_STATIC(ITABLE, ISUBCASE, DEVICE_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
+!
+!      Parameters
+!      ==========
+!      op2 : file int
+!         the file pointer
+!      itable : int
+!         the subtable number
+!      isubcase : int
+!         the subcase id (from the bulk data deck)
+!      etype : int
+!         element type
+!      num_wide : int
+!         the number of fields in each element
+!      stress_code : int
+!         0 : stress???
+!         1 : strain???
 !
       USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
       IMPLICIT NONE
       INTEGER(LONG), INTENT(IN) :: ITABLE
+      INTEGER(LONG), INTENT(IN) :: ISUBCASE
       INTEGER(LONG), INTENT(IN) :: DEVICE_CODE
       INTEGER(LONG), INTENT(IN) :: ELEM_TYPE
       INTEGER(LONG), INTENT(IN) :: NUM_WIDE
       INTEGER(LONG), INTENT(IN) :: STRESS_CODE
+
+      INTEGER(LONG) :: FIELD5, FIELD6, FIELD7
       INTEGER(LONG) :: FORMAT_CODE, ANALYSIS_CODE
 !      we assumed static
       ANALYSIS_CODE = 1
+      
+      ! LSDVMN
+      FIELD5 = 0
+
+      FIELD6 = 0
+      FIELD7 = 0
 !      static is real
       FORMAT_CODE = 1
-      CALL WRITE_OES3(ITABLE, ANALYSIS_CODE, DEVICE_CODE, FORMAT_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
+      CALL WRITE_OES3(ITABLE, ANALYSIS_CODE, ISUBCASE, DEVICE_CODE, FORMAT_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
       END SUBROUTINE WRITE_OES3_STATIC
 
 ! ##################################################################################################################################
-      SUBROUTINE WRITE_OES3(ITABLE, ANALYSIS_CODE, DEVICE_CODE, FORMAT_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
-!    analysis_code
-!      the solution type flag
+      SUBROUTINE WRITE_OES3(ITABLE, ANALYSIS_CODE, ISUBCASE, DEVICE_CODE, FORMAT_CODE, ELEM_TYPE, NUM_WIDE, STRESS_CODE)
+!      Parameters
+!      ==========
+!      analysis_code
+!        the solution type flag
+!      approach_code
+!        ???
       USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
       USE IOUNT1, ONLY                :  OP2
       IMPLICIT NONE
       INTEGER(LONG), INTENT(IN) :: ITABLE
       INTEGER(LONG), INTENT(IN) :: ANALYSIS_CODE
+      INTEGER(LONG), INTENT(IN) :: ISUBCASE
       INTEGER(LONG), INTENT(IN) :: DEVICE_CODE
       INTEGER(LONG), INTENT(IN) :: ELEM_TYPE
       INTEGER(LONG), INTENT(IN) :: FORMAT_CODE
       INTEGER(LONG), INTENT(IN) :: NUM_WIDE
       INTEGER(LONG), INTENT(IN) :: STRESS_CODE
       
-      INTEGER(LONG) :: TABLE_CODE
+      INTEGER(LONG) :: FIELD5, FIELD6, FIELD7, APPROACH_CODE
+      INTEGER(LONG) :: TABLE_CODE, LOAD_SET, THERMAL, ACOUSTIC_FLAG
+      CHARACTER(LEN=128) :: TITLE, LABEL, SUBTITLE
+      LOGICAL NEW_RESULT
       
-      character(len=128) :: TITLE, LABEL, SUBTITLE
-      TITLE = "Title"
-      LABEL = "Label"
+      NEW_RESULT = .TRUE.
+      IF(NEW_RESULT .AND. (ITABLE .NE. 3)) THEN
+        WRITE(14) 146
+      ELSE
+         WRITE(14) ITABLE
+         WRITE(14) 1
+         WRITE(14) 0
+         WRITE(14) 146
+      ENDIF
+      TITLE    = "Title"
+      LABEL    = "Label"
       SUBTITLE = "Subtitle"
-      
       ! stress/strain only
       TABLE_CODE = 5
+      
+      ! ???
+      LOAD_SET = 1
+      
+      ! we're not doing acoustic
+      ACOUSTIC_FLAG = 0
+      
+      ! not always 0 for stress, but for now
+      THERMAL = 0
+
+      APPROACH_CODE = ANALYSIS_CODE * 10 + DEVICE_CODE
+
+      ! 584 bytes
+      WRITE(14) APPROACH_CODE, TABLE_CODE, ELEM_TYPE, ISUBCASE, FIELD5, &
+            FIELD6, FIELD7, LOAD_SET, FORMAT_CODE, NUM_WIDE, &
+            STRESS_CODE, ACOUSTIC_FLAG, 0, 0, 0, &
+            0, 0, 0, 0, 0, &
+            0, 0, THERMAL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+            0, 0, 0, 0, &
+            TITLE, SUBTITLE, LABEL
 
       END SUBROUTINE WRITE_OES3
