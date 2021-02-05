@@ -90,6 +90,47 @@
       INTEGER(LONG)                   :: I1                ! Filename (less extension) length
       INTEGER(LONG)                   :: OUNT(2)           ! File units to write messages to. Input to subr READERR  
  
+      INTEGER(LONG)                   :: POST             ! PARAM,POST,VALUE
+
+! *********************************************************************************************************************************
+!     Nominal flags
+      POST = -1
+
+!     Not supported
+!     POSTEXT = YES
+!     OGEOM = NO
+!
+!     These should probably have an OP2* or *OP2 attached or something...
+!     I'd prefer not to have POST used for dumping different matrices.
+!
+!     displacement/velocity/acceleration
+!     UB = YES
+!     UG = YES
+!     UA = YES
+!
+!     load
+!     PB = YES
+!     PG = YES
+!     PA = YES
+!
+!     stiffness
+!     KGG = YES
+!     KAA = YES
+!
+!     mass
+!     MGG = YES
+!     MAA = YES
+!
+!     damping
+!     BGG = YES
+!     BAA = YES
+!
+!     eigenvectors
+!     PHIG = YES
+!     PHIB = YES
+!
+!     LAMA = YES  - eigenvalues
+!
 ! **********************************************************************************************************************************
 ! Default units for writing errors the screen (until LINK1A is read) and set filename length
  
@@ -375,17 +416,20 @@
 
 ! Unformatted files
 
+      ! the op2 should be open at the end of this...
+      ! ideally the op2 would be opened right after geometry processing
       OP2FIL(1:I1)  = FILNAM(1:I1)
       OP2FIL(I1+1:) = 'OP2'
       INQUIRE ( FILE=OP2FIL, EXIST=FILE_EXIST )
       IF (FILE_EXIST) THEN
          IF (RESTART == 'Y') THEN
             CALL FILE_OPEN ( OP2, OP2FIL, OUNT,'OLD    ', OP2_MSG,'NEITHER','UNFORMATTED','WRITE','REWIND','N','N','Y')
-            CALL FILE_CLOSE ( OP2, OP2FIL,'KEEP','Y')
+!            CALL FILE_CLOSE ( OP2, OP2FIL,'KEEP','Y')
          ELSE
             CALL FILE_OPEN ( OP2, OP2FIL, OUNT,'REPLACE', OP2_MSG,'NEITHER','UNFORMATTED','WRITE','REWIND','N','N','Y')
-            CALL FILE_CLOSE ( OP2, OP2FIL,'DELETE','Y')
+!            CALL FILE_CLOSE ( OP2, OP2FIL,'DELETE','Y')
          ENDIF
+         CALL WRITE_OP2_HEADER(POST)
          WRITE(F04,*)
       ENDIF
  
@@ -1219,4 +1263,46 @@
 
 ! **********************************************************************************************************************************
 
+! ##################################################################################################################################
       END SUBROUTINE MYSTRAN_FILES
+      SUBROUTINE WRITE_OP2_HEADER(POST)
+      USE PENTIUM_II_KIND, ONLY       :  BYTE, LONG, DOUBLE
+
+      integer, intent(in)  :: POST
+      character(len=28) :: TAPE_CODE
+      character(len=8)  :: NASTRAN_VERSION
+      IF (POST == -1) THEN
+        !_write_markers(op2, op2_ascii, [3, 0, 7])
+        WRITE(2) 3
+        WRITE(2) 0
+        WRITE(2) 7
+        TAPE_CODE = 'NASTRAN FORT TAPE ID CODE - '
+!        write(2) 1
+!        write(2) 7
+        WRITE(2) TAPE_CODE
+!        fop2.write(pack(endian + b'7i 28s i', *[4, 1, 4,
+!                                                4, 7, 4,
+!                                                28, tape_code, 28]))
+
+!        nastran_version = b'NX8.5   ' if obj.is_nx else b'XXXXXXXX'
+        NASTRAN_VERSION = 'XXXXXXXX'
+        WRITE(2) 2
+        WRITE(2) NASTRAN_VERSION
+!        write(2) 'XXXXXXXX'
+!        fop2.write(pack(endian + b'4i 8s i', *[4, 2, 4,
+!                                               #4, 2, 4,
+!                                               #4, 1, 4,
+!                                               #4, 8, 4,
+!                                               8, nastran_version, 8]))
+        WRITE(2) -1
+        WRITE(2) 0
+!        fop2.write(pack(endian + b'6i', *[4, -1, 4,
+!                                          4, 0, 4,]))
+      ELSE IF(POST == -2) THEN
+!write_markers(fop2_ascii, [2, 4])
+        WRITE(2) 2
+        WRITE(2) 4
+      ENDIF
+      END SUBROUTINE WRITE_OP2_HEADER
+
+! ##################################################################################################################################
