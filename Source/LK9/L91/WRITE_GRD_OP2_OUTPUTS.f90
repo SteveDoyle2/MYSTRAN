@@ -42,23 +42,26 @@
       USE LINK9_STUFF, ONLY           :  GID_OUT_ARRAY, OGEL
       USE MODEL_STUF, ONLY            :  GRID, LABEL, SCNUM, SUBLOD, STITLE, TITLE
       USE EIGEN_MATRICES_1 , ONLY     :  EIGEN_VAL
-  
+
+!     TODO: not sure how to use this...
 !     USE WRITE_GRD_PCH_OUTPUTS_USE_IFs
 
       IMPLICIT NONE
-     CHARACTER(LEN=LEN(BLNK_SUB_NAM)):: SUBR_NAME = 'WRITE_GRD_OP2_OUTPUTS'
-      CHARACTER(LEN=*) , INTENT(IN)   :: WHAT              ! Indicator whether to process displ or force output requests
-!     CHARACTER(LEN=1)                :: G_OR_S            ! 'G' if a grid point or 'S' if a scalar point
-!     CHARACTER(LEN=19)               :: OUTNAM            ! An output name for a header for the PCH file
-     CHARACTER(LEN=8)                 :: TABLE_NAME        ! Name of the op2 table that we're writing
-     CHARACTER(LEN=61)                :: TITLEI            ! Solution title
-     CHARACTER(LEN=61)                :: STITLEI           ! Subcase subtitle
-     CHARACTER(LEN=61)                :: LABELI            ! Subcase label
+      CHARACTER(LEN=LEN(BLNK_SUB_NAM)) :: SUBR_NAME = 'WRITE_GRD_OP2_OUTPUTS'
+      CHARACTER(LEN=*), INTENT(IN)     :: WHAT               ! Indicator whether to process displ or
+                                                            ! force output requests
+!     CHARACTER(LEN=1)                 :: G_OR_S            ! 'G' if a grid point or 'S' if a scalar point
+!     CHARACTER(LEN=19)                :: OUTNAM            ! An output name for a header for the PCH file
+      CHARACTER(LEN=8)                 :: TABLE_NAME        ! Name of the op2 table that we're writing
+      CHARACTER(LEN=61)                :: TITLEI            ! Solution title
+      CHARACTER(LEN=61)                :: STITLEI           ! Subcase subtitle
+      CHARACTER(LEN=61)                :: LABELI            ! Subcase label
 
       INTEGER(LONG), INTENT(IN)       :: JSUB              ! Solution vector number
       INTEGER(LONG), INTENT(IN)       :: NUM               ! The number of rows of OGEL to write out
       INTEGER(LONG)                   :: I,J               ! DO loop indices
 !      INTEGER(LONG), PARAMETER        :: SUBR_BEGEND = WRITE_GRD_OP2_OUTPUTS_BEGEND
+      INTEGER(LONG)                   :: ISUBCASE          ! the current subcase ID
       INTEGER(LONG)                   :: TABLE_CODE        ! flag for the type of table
       INTEGER(LONG)                   :: APPROACH_CODE     ! flag for the solution type
       INTEGER(LONG), DIMENSION(NUM)   :: G_OR_S            ! flag for the type of point
@@ -76,7 +79,8 @@
 
 ! **********************************************************************************************************************************
 !  Make sure that WHAT is a valid value
-      IF ((WHAT == 'ACCE') .OR. (WHAT == 'DISP') .OR. (WHAT == 'OLOAD') .OR. (WHAT == 'SPCF') .OR. (WHAT == 'MPCF')) THEN
+      IF ((WHAT == 'ACCE') .OR. (WHAT == 'DISP') .OR. (WHAT == 'OLOAD') .OR. &
+          (WHAT == 'SPCF') .OR. (WHAT == 'MPCF')) THEN
          CONTINUE
       ELSE
          WRITE(ERR,9100) WHAT
@@ -94,35 +98,15 @@
 
       ! TODO: is an eigenvector classified as displacement?
       ! TODO: where is velocity???
-      IF (WHAT == 'DISP') THEN
-        TABLE_NAME = 'OUGV1   '
-        TABLE_CODE = 1
-      IF (WHAT == 'VELO') THEN
-        TABLE_NAME = 'OUGV1   '
-        TABLE_CODE = 10
-      IF (WHAT == 'ACCE') THEN
-        TABLE_NAME = 'OUGV1   '
-        TABLE_CODE = 11
-
-      ELSE IF (WHAT == 'OLOAD') THEN
-        TABLE_NAME = 'OPGV1   '  ! OPG1?
-        TABLE_CODE = 2
-
-      ELSE IF (WHAT == 'SPCF') THEN
-        TABLE_NAME = 'OQGV1   '
-        TABLE_CODE = 3
-      ELSE IF (WHAT == 'MPCF') THEN
-        TABLE_NAME = 'OQGV1   '
-        TABLE_CODE = 39
-
-      ELSE
-        TABLE_NAME = 'OUG ERR '
-        TABLE_CODE = -1 ! error
-      ENDIF
+      ! TODO: can we return two values from a subroutine, so we don't have these
+      !       hanging out?
+      TABLE_NAME = 'OUG ERR '
+      TABLE_CODE = -1 ! error
+      CALL GET_TABLE_NAME_OUG(WHAT, TABLE_NAME, TABLE_CODE)
 
       EIGENVALUE = 0.0
       MODE = 0
-      IF ((SOL_NAME(1:7) == 'STATICS') THEN
+      IF (SOL_NAME(1:7) == 'STATICS') THEN
         APPROACH_CODE = 1  ! statics
       ELSE IF ((SOL_NAME(1:8) == 'BUCKLING') .AND. (LOAD_ISTEP == 1)) THEN
         APPROACH_CODE = 1 ! statics
@@ -151,23 +135,9 @@
 ! Write accels, displ's, applied forces or SPC forces (also calc TOTALS for forces if that is being output)
 ! TOTALS(J) is summation of G.P. values of applied forces, SPC forces, or MFC forces, for each of the J=1,6 components.
       DEVICE_CODE = 1
-      
-      ! putting this G/S calc into an array
-      DO I=1,NUM
-         ! type
-         ! 0 - H / SECTOR/HARMONIC/RING POINT
-         ! 1 - G / GRID
-         ! 2 - S / SPOINT
-         ! 3 - E / EXTRA POINT
-         ! 4 - M / MODAL POINT
-         ! 7 - L / RIGID POINT (e.g. RBE3)
-         IF (GRID(I,6) == 1) THEN
-            G_OR_S(I) = 2
-         ELSE IF (GRID(I,6) == 6) THEN
-            G_OR_S(I) = 1
-         ELSE
-            G_OR_S(I) = -1 ! error
-         ENDIF
+
+      ! fill the G_OR_S array
+      CALL GET_G_OR_S ( NUM, G_OR_S )
 
       DO I=1,NUM
         ! TODO: this needs to be vectorized
@@ -195,3 +165,68 @@
 ! **********************************************************************************************************************************
  
       END SUBROUTINE WRITE_GRD_OP2_OUTPUTS
+
+!==============================================================================
+      SUBROUTINE GET_TABLE_NAME_OUG ( WHAT, TABLE_NAME, TABLE_CODE )
+      USE PENTIUM_II_KIND, ONLY     :  BYTE, LONG
+      IMPLICIT NONE
+      CHARACTER(LEN=*), INTENT(IN)  :: WHAT   ! Indicator whether to process displ or
+                                              ! force output requests
+      CHARACTER(LEN=8)  :: TABLE_NAME         ! Name of the op2 table that we're writing
+      INTEGER(LONG)     :: TABLE_CODE         ! flag for the type of table
+
+      IF (WHAT == 'DISP') THEN
+        TABLE_NAME = 'OUGV1   '
+        TABLE_CODE = 1
+      ELSE IF (WHAT == 'VELO') THEN
+        TABLE_NAME = 'OUGV1   '
+        TABLE_CODE = 10
+      ELSE IF (WHAT == 'ACCE') THEN
+        TABLE_NAME = 'OUGV1   '
+        TABLE_CODE = 11
+ 
+      ELSE IF (WHAT == 'OLOAD') THEN
+        TABLE_NAME = 'OPG1    '  ! OPGV1?
+        TABLE_CODE = 2
+
+      ELSE IF (WHAT == 'SPCF') THEN
+        TABLE_NAME = 'OQGV1   '
+        TABLE_CODE = 3
+      ELSE IF (WHAT == 'MPCF') THEN
+        TABLE_NAME = 'OQGV1   '
+        TABLE_CODE = 39
+
+      ELSE
+        TABLE_NAME = 'OUG ERR '
+        TABLE_CODE = -1 ! error
+      ENDIF
+      END SUBROUTINE GET_TABLE_NAME_OUG
+
+!==============================================================================
+      SUBROUTINE GET_G_OR_S ( NUM, G_OR_S )
+      USE MODEL_STUF, ONLY       :  GRID
+      USE PENTIUM_II_KIND, ONLY  :  BYTE, LONG
+      IMPLICIT NONE
+      INTEGER(LONG), INTENT(IN)  :: NUM  ! The number of rows of OGEL to write out
+
+      INTEGER(LONG)                  :: I       ! DO loop index
+      INTEGER(LONG), DIMENSION(NUM)  :: G_OR_S  ! flag for the type of point
+
+      ! putting this G/S calc into an array
+      DO I=1,NUM
+         ! type
+         ! 0 - H / SECTOR/HARMONIC/RING POINT
+         ! 1 - G / GRID
+         ! 2 - S / SPOINT
+         ! 3 - E / EXTRA POINT
+         ! 4 - M / MODAL POINT
+         ! 7 - L / RIGID POINT (e.g. RBE3)
+         IF (GRID(I,6) == 1) THEN
+            G_OR_S(I) = 2
+         ELSE IF (GRID(I,6) == 6) THEN
+            G_OR_S(I) = 1
+         ELSE
+            G_OR_S(I) = -1 ! error
+         ENDIF
+      ENDDO
+      END SUBROUTINE GET_G_OR_S
